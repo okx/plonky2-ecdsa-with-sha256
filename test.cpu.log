@@ -1,0 +1,7 @@
+26.5812s to preprocess
+| 14.2783s to generate sigma polynomials
+| 0.1164s to IFFT
+| 1.0488s to FFT + blinding
+| 1.8958s to transpose LDEs
+| 8.3669s to build Merkle tree
+start proof
