@@ -86,7 +86,10 @@ fn main() {
 
     dbg!(builder.num_gates());
     let data = builder.build::<C>();
+    let start = std::time::Instant::now();
+    println!("start proof");
     let proof = data.prove(pw).unwrap();
+    println!("elapsed: {:?}", start.elapsed());
     println!("proof size: {}", proof.public_inputs.len());
     assert!(data.verify(proof).is_ok());
 }
