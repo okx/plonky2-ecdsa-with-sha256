@@ -27,9 +27,41 @@ use plonky2_ecdsa::{
         CircuitBuilderHash,
     },
 };
+use env_logger::{try_init_from_env, Env, DEFAULT_FILTER_ENV};
+#[cfg(feature = "cuda")]
+use cryptography_cuda::{
+    get_number_of_gpus_rs, init_twiddle_factors_rs, ntt, ntt_batch, types::NTTInputOutputOrder,
+};
+
+pub fn init_logger() {
+    let _ = try_init_from_env(Env::default().filter_or(DEFAULT_FILTER_ENV, "debug"));
+}
+
+#[cfg(feature = "cuda")]
+fn init_cuda() {
+    let num_of_gpus = get_number_of_gpus_rs();
+    println!("num of gpus: {:?}", num_of_gpus);
+    std::env::set_var("NUM_OF_GPUS", num_of_gpus.to_string());
+
+    let log_ns: Vec<usize> = (6..22).collect();
+
+    let mut device_id = 0;
+    while device_id < num_of_gpus {
+        for log_n in &log_ns {
+            // println!("{:?}", log_n);
+            init_twiddle_factors_rs(device_id, *log_n);
+        }
+        device_id = device_id + 1;
+    }
+}
+
 
 use sha2::{Digest, Sha256};
 fn main() {
+    init_logger();
+    #[cfg(feature = "cuda")]
+    init_cuda();
+
     let config = CircuitConfig::standard_ecc_config();
     const D: usize = 2;
     type C = PoseidonGoldilocksConfig;
