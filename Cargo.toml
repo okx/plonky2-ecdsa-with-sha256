@@ -9,6 +9,7 @@ edition = "2021"
 default=["parallel"]
 parallel = ["plonky2_maybe_rayon/parallel", "plonky2/parallel"]
 cuda=["plonky2_field/cuda", "plonky2/cuda", "cryptography_cuda"]
+batch=["plonky2/batch"]
 timing=["plonky2/timing"]
 
 [dependencies]
