@@ -2,7 +2,7 @@ use num::BigUint;
 use plonky2::{
     field::{
         secp256k1_scalar::Secp256K1Scalar,
-        types::{Field, Sample},
+        types::{Field, Sample, PrimeField64},
     },
     iop::witness::PartialWitness,
     plonk::{
@@ -30,7 +30,7 @@ use plonky2_ecdsa::{
 use env_logger::{try_init_from_env, Env, DEFAULT_FILTER_ENV};
 #[cfg(feature = "cuda")]
 use cryptography_cuda::{
-    get_number_of_gpus_rs, init_twiddle_factors_rs, ntt, ntt_batch, types::NTTInputOutputOrder,
+    get_number_of_gpus_rs, init_twiddle_factors_rs, init_coset_rs, ntt, ntt_batch, types::NTTInputOutputOrder,
 };
 
 pub fn init_logger() {
@@ -39,6 +39,8 @@ pub fn init_logger() {
 
 #[cfg(feature = "cuda")]
 fn init_cuda() {
+    use plonky2_field::goldilocks_field::GoldilocksField;
+
     let num_of_gpus = get_number_of_gpus_rs();
     println!("num of gpus: {:?}", num_of_gpus);
     std::env::set_var("NUM_OF_GPUS", num_of_gpus.to_string());
@@ -46,6 +48,7 @@ fn init_cuda() {
     let log_ns: Vec<usize> = (6..22).collect();
 
     let mut device_id = 0;
+    init_coset_rs(device_id, 24, GoldilocksField::coset_shift().to_canonical_u64());
     while device_id < num_of_gpus {
         for log_n in &log_ns {
             // println!("{:?}", log_n);
