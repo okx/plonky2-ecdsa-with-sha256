@@ -99,6 +99,14 @@ impl<F: RichField + Extendable<D>, const D: usize> Gate<F, D> for ComparisonGate
         format!("{self:?}<D={D}>")
     }
 
+    fn export_circom_verification_code(&self) -> String {
+        todo!()
+    }
+    
+    fn export_solidity_verification_code(&self) -> String {
+        todo!()
+    }
+
     fn serialize(&self, _dst: &mut Vec<u8>, _: &CommonCircuitData<F, D>) -> IoResult<()> {
         todo!()
     }

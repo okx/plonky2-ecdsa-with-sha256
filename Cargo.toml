@@ -25,7 +25,7 @@ serde_with = { version = "2.2.0", features = ["hex"] }
 hex = { version = "0.4.3" }
 sha2 = { version = "0.10.6" }
 env_logger = "0.9.1"
-cryptography_cuda={path="./plonky2/cryptography_cuda", optional=true}
+cryptography_cuda={path="./plonky2/depends/cryptography_cuda", optional=true}
 
 [dev-dependencies]
 rand = { version = "0.8.4", default-features = false, features = ["getrandom"] }

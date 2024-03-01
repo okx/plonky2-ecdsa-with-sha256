@@ -266,6 +266,14 @@ impl<F: RichField + Extendable<D>, const D: usize> Gate<F, D> for UninterleaveTo
     {
         todo!()
     }
+
+    fn export_circom_verification_code(&self) -> String {
+        todo!()
+    }
+    
+    fn export_solidity_verification_code(&self) -> String {
+        todo!()
+    }
 }
 
 impl<F: RichField + Extendable<D>, const D: usize> PackedEvaluableBase<F, D>

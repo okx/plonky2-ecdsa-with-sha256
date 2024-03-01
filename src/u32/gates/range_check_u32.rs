@@ -7,6 +7,7 @@ use plonky2::plonk::circuit_data::CommonCircuitData;
 use plonky2::field::extension::Extendable;
 use plonky2::field::types::Field;
 use plonky2::gates::gate::Gate;
+use plonky2::gates::gate::{compute_filter, compute_filter_circuit};
 use plonky2::gates::util::StridedConstraintConsumer;
 use plonky2::hash::hash_types::RichField;
 use plonky2::iop::ext_target::ExtensionTarget;
@@ -171,6 +172,111 @@ impl<F: RichField + Extendable<D>, const D: usize> Gate<F, D> for U32RangeCheckG
     // 1 for checking the each sum of aux limbs, plus a range check for each aux limb.
     fn num_constraints(&self) -> usize {
         self.num_input_limbs * (1 + self.aux_limbs_per_input_limb())
+    }
+    
+    fn eval_unfiltered_base_batch(&self, vars_base: plonky2::plonk::vars::EvaluationVarsBaseBatch<F>) -> Vec<F> {
+        let mut res = vec![F::ZERO; vars_base.len() * self.num_constraints()];
+        for (i, vars_base_one) in vars_base.iter().enumerate() {
+            self.eval_unfiltered_base_one(
+                vars_base_one,
+                StridedConstraintConsumer::new(&mut res, vars_base.len(), i),
+            );
+        }
+        res
+    }
+    
+    fn eval_filtered(
+        &self,
+        mut vars: EvaluationVars<F, D>,
+        row: usize,
+        selector_index: usize,
+        group_range: core::ops::Range<usize>,
+        num_selectors: usize,
+        num_lookup_selectors: usize,
+    ) -> Vec<<F as Extendable<D>>::Extension> {
+        let filter = compute_filter(
+            row,
+            group_range,
+            vars.local_constants[selector_index],
+            num_selectors > 1,
+        );
+        vars.remove_prefix(num_selectors);
+        vars.remove_prefix(num_lookup_selectors);
+        self.eval_unfiltered(vars)
+            .into_iter()
+            .map(|c| filter * c)
+            .collect()
+    }
+    
+    fn eval_filtered_base_batch(
+        &self,
+        mut vars_batch: plonky2::plonk::vars::EvaluationVarsBaseBatch<F>,
+        row: usize,
+        selector_index: usize,
+        group_range: core::ops::Range<usize>,
+        num_selectors: usize,
+        num_lookup_selectors: usize,
+    ) -> Vec<F> {
+        let filters: Vec<_> = vars_batch
+            .iter()
+            .map(|vars| {
+                compute_filter(
+                    row,
+                    group_range.clone(),
+                    vars.local_constants[selector_index],
+                    num_selectors > 1,
+                )
+            })
+            .collect();
+        vars_batch.remove_prefix(num_selectors + num_lookup_selectors);
+        let mut res_batch = self.eval_unfiltered_base_batch(vars_batch);
+        for res_chunk in res_batch.chunks_exact_mut(filters.len()) {
+            plonky2_field::batch_util::batch_multiply_inplace(res_chunk, &filters);
+        }
+        res_batch
+    }
+    
+    fn eval_filtered_circuit(
+        &self,
+        builder: &mut CircuitBuilder<F, D>,
+        mut vars: EvaluationTargets<D>,
+        row: usize,
+        selector_index: usize,
+        group_range: core::ops::Range<usize>,
+        num_selectors: usize,
+        num_lookup_selectors: usize,
+        combined_gate_constraints: &mut [ExtensionTarget<D>],
+    ) {
+        let filter = compute_filter_circuit(
+            builder,
+            row,
+            group_range,
+            vars.local_constants[selector_index],
+            num_selectors > 1,
+        );
+        vars.remove_prefix(num_selectors);
+        vars.remove_prefix(num_lookup_selectors);
+        let my_constraints = self.eval_unfiltered_circuit(builder, vars);
+        for (acc, c) in combined_gate_constraints.iter_mut().zip(my_constraints) {
+            *acc = builder.mul_add_extension(filter, c, *acc);
+        }
+    }
+    
+    fn num_ops(&self) -> usize {
+        self.generators(0, &vec![F::ZERO; self.num_constants()])
+            .len()
+    }
+    
+    fn extra_constant_wires(&self) -> Vec<(usize, usize)> {
+        vec![]
+    }
+    
+    fn export_circom_verification_code(&self) -> String {
+        todo!()
+    }
+    
+    fn export_solidity_verification_code(&self) -> String {
+        todo!()
     }
 }
 
